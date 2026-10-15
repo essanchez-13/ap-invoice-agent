@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from .agent import MODEL, InvoiceResult, process_invoice
+from .agent import DEFAULT_MODEL, InvoiceResult, process_invoice
 from .erp import ERP
 from .models import ExceptionCode
 from .redact import mask
@@ -26,6 +26,9 @@ def main() -> None:
     parser.add_argument("--data", type=Path, default=Path("data"), help="Folder with the ERP CSVs.")
     parser.add_argument("--out", type=Path, default=Path("out"))
     parser.add_argument("--workers", type=int, default=4, help="Invoices processed in parallel.")
+    parser.add_argument(
+        "--model", default=DEFAULT_MODEL, help="Claude model ID, e.g. claude-haiku-5-5 for cheap test runs."
+    )
     parser.add_argument("--svg", type=Path, help="Also save the terminal output as an SVG screenshot.")
     args = parser.parse_args()
 
@@ -39,19 +42,19 @@ def main() -> None:
 
     erp = ERP(args.data)
     client = anthropic.Anthropic()
-    console.print(f"[bold]AP invoice agent[/bold]  model={MODEL}  invoices={len(pdfs)}\n")
+    console.print(f"[bold]AP invoice agent[/bold]  model={args.model}  invoices={len(pdfs)}\n")
 
     results: list[InvoiceResult] = []
     with Progress(SpinnerColumn(), TextColumn("{task.description}"), console=console, transient=True) as progress:
         task = progress.add_task(f"Processing {len(pdfs)} invoices...", total=len(pdfs))
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(_safe_process, client, erp, pdf): pdf for pdf in pdfs}
+            futures = {pool.submit(_safe_process, client, erp, pdf, args.model): pdf for pdf in pdfs}
             for future in as_completed(futures):
                 results.append(future.result())
                 progress.advance(task)
     results.sort(key=lambda r: r.file)
 
-    _write_outputs(results, args.out)
+    _write_outputs(results, args.out, args.model)
     console.print(_results_table(results))
     approved = sum(r.status == "approved" for r in results)
     tokens_in = sum(r.usage["input_tokens"] for r in results)
@@ -70,10 +73,10 @@ def main() -> None:
         console.save_svg(str(args.svg), title="ap-invoice-agent")
 
 
-def _safe_process(client: anthropic.Anthropic, erp: ERP, pdf: Path) -> InvoiceResult:
+def _safe_process(client: anthropic.Anthropic, erp: ERP, pdf: Path, model: str) -> InvoiceResult:
     # One bad invoice or API error must not stop the batch.
     try:
-        return process_invoice(client, erp, pdf)
+        return process_invoice(client, erp, pdf, model)
     except anthropic.AuthenticationError:
         raise SystemExit("Authentication failed: set ANTHROPIC_API_KEY (see .env.example).") from None
     except anthropic.APIError as exc:
@@ -104,7 +107,7 @@ def _results_table(results: list[InvoiceResult]) -> Table:
     return table
 
 
-def _write_outputs(results: list[InvoiceResult], out_dir: Path) -> None:
+def _write_outputs(results: list[InvoiceResult], out_dir: Path, model: str) -> None:
     (out_dir / "audit").mkdir(parents=True, exist_ok=True)
     approved, exceptions = [], []
     for r in results:
@@ -132,7 +135,7 @@ def _write_outputs(results: list[InvoiceResult], out_dir: Path) -> None:
             )
         audit = {
             "file": r.file,
-            "model": MODEL,
+            "model": model,
             "final_status": r.status,
             "exception_codes": [str(c) for c in r.exception_codes],
             "policy_override": r.overridden,

@@ -129,3 +129,12 @@ def test_refusal_is_handled(erp):
     client = ScriptedClient([response([], "refusal")])
     result = process_invoice(client, erp, SAMPLE)
     assert result.exception_codes == [ExceptionCode.AGENT_ERROR] and "declined" in result.error
+
+
+def test_fallback_only_sent_for_models_that_support_it(erp):
+    for model, expects_fallback in (("claude-opus-5-5", True), ("claude-haiku-5-5", False)):
+        client = ScriptedClient([response([], "refusal")])
+        process_invoice(client, erp, SAMPLE, model)
+        request = client.requests[0]
+        assert request["model"] == model
+        assert ("fallbacks" in request) is expects_fallback

@@ -19,12 +19,14 @@ from .erp import ERP
 from .models import AgentDecision, ExceptionCode
 from .tools import TOOL_SPECS, CaseFile, run_tool
 
-MODEL = "claude-opus-5-5"
+DEFAULT_MODEL = "claude-opus-5-5"
 MAX_TURNS = 10
 # Server-side refusal fallback: if the model's safety classifiers decline a
 # (benign) invoice, the API retries on Anthropic's recommended fallback model
-# instead of failing the whole batch.
+# instead of failing the whole batch. Only some models support it (Haiku does
+# not, and rejects the parameter), so it is sent per model.
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
 
 SYSTEM_PROMPT = """\
 You are an accounts-payable (AP) analyst agent. You receive one vendor invoice as a PDF \
@@ -76,7 +78,13 @@ def _pdf_block(pdf_path: Path) -> dict[str, Any]:
     return {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}}
 
 
-def process_invoice(client: anthropic.Anthropic, erp: ERP, pdf_path: Path) -> InvoiceResult:
+def _request_options(model: str) -> dict[str, Any]:
+    if model in FALLBACK_MODELS:
+        return {"betas": [FALLBACK_BETA], "fallbacks": "default"}
+    return {}
+
+
+def process_invoice(client: anthropic.Anthropic, erp: ERP, pdf_path: Path, model: str = DEFAULT_MODEL) -> InvoiceResult:
     result = InvoiceResult(file=pdf_path.name, status="exception", exception_codes=[])
     messages: list[dict[str, Any]] = [
         {
@@ -93,14 +101,13 @@ def process_invoice(client: anthropic.Anthropic, erp: ERP, pdf_path: Path) -> In
     for _ in range(MAX_TURNS):
         result.turns += 1
         response = client.beta.messages.create(
-            model=MODEL,
+            model=model,
             max_tokens=16000,
             system=SYSTEM_PROMPT,
             tools=TOOL_SPECS,
             messages=messages,
             output_config={"effort": "medium", "format": OUTPUT_FORMAT},
-            betas=[FALLBACK_BETA],
-            fallbacks="default",
+            **_request_options(model),
         )
         result.usage["input_tokens"] += response.usage.input_tokens
         result.usage["output_tokens"] += response.usage.output_tokens
