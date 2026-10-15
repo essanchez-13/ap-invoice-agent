@@ -1,0 +1,38 @@
+[project]
+name = "ap-invoice-agent"
+version = "0.1.0"
+readme = "README.md"
+license = "MIT"
+description = "AP invoice agent: Claude tool use for invoice extraction, three-way matching and exception routing."
+authors = [
+    { name = "Esteban Sanchez" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.14.0",
+    "python-dotenv>=1.2.4",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+ap-invoice-agent = "ap_invoice_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "fpdf2>=2.8.9",
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

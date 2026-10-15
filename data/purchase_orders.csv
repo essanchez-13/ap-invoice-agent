@@ -1,0 +1,12 @@
+po_number,vendor_id,currency,status,line,description,quantity,unit_price
+PO-45001,V-1001,USD,open,1,Copy paper A4 80g (box of 10 reams),20,38.50
+PO-45001,V-1001,USD,open,2,Toner cartridge HP 58A,6,92.00
+PO-45001,V-1001,USD,open,3,Ergonomic desk chair,2,245.00
+PO-45002,V-1002,USD,open,1,Ocean freight 40ft container SJO-MIA,1,3200.00
+PO-45002,V-1002,USD,open,2,Customs brokerage fee,1,275.00
+PO-45003,V-1003,USD,open,1,Laptop Dell Latitude 7450,4,1250.00
+PO-45003,V-1003,USD,open,2,Laptop setup and imaging,4,60.00
+PO-45004,V-1004,USD,open,1,Hydraulic pump HX-200,2,1180.00
+PO-45004,V-1004,USD,open,2,Seal kit HX-200,10,24.50
+PO-45005,V-1004,USD,open,1,Conveyor belt 12m,1,2650.00
+PO-45005,V-1004,USD,open,2,Installation labor (hours),16,55.00

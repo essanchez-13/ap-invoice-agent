@@ -1,0 +1,6 @@
+vendor_id,name,tax_id,status,payment_terms,remit_bank_last4
+V-1001,Northwind Office Supply S.A.,3-101-458812,active,Net 30,4821
+V-1002,Pacific Freight Logistics Inc.,94-3318842,active,Net 45,0937
+V-1003,Cordillera IT Services S.R.L.,3-102-776120,active,Net 30,5512
+V-1004,Atlas Industrial Parts LLC,61-2209417,active,Net 60,7730
+V-1005,Brightline Marketing Group,88-1047731,blocked,Net 30,2264
